@@ -102,8 +102,9 @@
     <button onclick="toggleAll(5)">5분 전</button>
     <button onclick="toggleAll(1)">1분 전</button>
     <button onclick="toggleSummary()">📱 요약 모드</button>
-    <button onclick="toggle30MinFilter()">🕒 30분 이하 보기</button>
+    <button onclick="toggle30MinFilter(this)">🕒 30분 이하 보기</button>
   </div>
+
   <table id="bossTableContainer">
     <thead>
       <tr>
@@ -119,159 +120,180 @@
     <tbody id="bossTable"></tbody>
   </table>
 
+  <div id="bossFilter" style="text-align: center; margin-top: 20px; color: #ccc;"></div>
+
   <audio id="alarm1min"><source src="audio/boss_1min.mp3" type="audio/mpeg" /></audio>
   <audio id="alarm5min"><source src="audio/boss_5min.mp3" type="audio/mpeg" /></audio>
   <audio id="alarm10min"><source src="audio/boss_10min.mp3" type="audio/mpeg" /></audio>
   <audio id="testSound"><source src="audio/Test.mp3" type="audio/mpeg" /></audio>
 
-<script>
-  const alarmData = [
-    { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", nextTime: t => new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getMinutes() < 60 ? t.getHours() + 1 : t.getHours(), 0, 0) },
-    { name: "해적 선장", location: "2-5", timeText: "매 시 30분", nextTime: t => { const base = new Date(t); base.setMinutes(30, 0, 0); if (t.getMinutes() >= 30) base.setHours(base.getHours() + 1); return base; }},
-    { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 10)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
-    { name: "위더", location: "4-5", timeText: "짝수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1 || (h % 2 === 0 && t.getMinutes() >= 10)) h += 1 + (h % 2 === 1 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
-    { name: "쿵푸", location: "5-1", timeText: "홀수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 40)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
-    { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1 || (h % 2 === 0 && t.getMinutes() >= 40)) h += 1 + (h % 2 === 1 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
-    { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 50)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 50, 0, 0); }}
-  ];
+  <script>
+    const alarmData = [
+      { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", nextTime: t => new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getMinutes() < 60 ? t.getHours() + 1 : t.getHours(), 0, 0) },
+      { name: "해적 선장", location: "2-5", timeText: "매 시 30분", nextTime: t => { const base = new Date(t); base.setMinutes(30, 0, 0); if (t.getMinutes() >= 30) base.setHours(base.getHours() + 1); return base; }},
+      { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 10)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
+      { name: "위더", location: "4-5", timeText: "짝수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1 || (h % 2 === 0 && t.getMinutes() >= 10)) h += 1 + (h % 2 === 1 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
+      { name: "쿵푸", location: "5-1", timeText: "홀수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 40)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
+      { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1 || (h % 2 === 0 && t.getMinutes() >= 40)) h += 1 + (h % 2 === 1 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
+      { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 50)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 50, 0, 0); }}
+    ];
 
-  const alarmStates = JSON.parse(localStorage.getItem('alarmStates') || '{}');
-  const triggered = {};
-  let filter30Active = false;
+    const alarmStates = JSON.parse(localStorage.getItem('alarmStates') || '{}');
+    const triggered = {};
+    let filter30Active = false;
+    let bossFilterState = JSON.parse(localStorage.getItem('bossFilterState') || '{}');
 
-  function saveState() {
-    localStorage.setItem('alarmStates', JSON.stringify(alarmStates));
-  }
+    function saveState() {
+      localStorage.setItem('alarmStates', JSON.stringify(alarmStates));
+    }
 
-  function createRow(boss) {
-    const tr = document.createElement('tr');
-    tr.id = `row-${boss.name}`;
-    tr.innerHTML = `
-      <td>${boss.name}</td>
-      <td>${boss.location}</td>
-      <td>${boss.timeText}</td>
-    `;
-    [10, 5, 1].forEach(min => {
-      const td = document.createElement('td');
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.checked = alarmStates[boss.name + '_' + min] || false;
-      input.addEventListener('change', () => {
-        alarmStates[boss.name + '_' + min] = input.checked;
-        saveState();
-      });
-      td.appendChild(input);
-      tr.appendChild(td);
-    });
-    const tdRemain = document.createElement('td');
-    tdRemain.id = `remain-time-${boss.name}`;
-    tr.appendChild(tdRemain);
-    return tr;
-  }
-
-  function playTestSound() {
-    const alarm = document.getElementById('testSound');
-    try {
-      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      alarm.currentTime = 0;
-      alarm.play();
-    } catch (e) { console.warn('음성 재생 실패:', e); }
-  }
-
-  function triggerAlarm(name, min) {
-    const alarm = document.getElementById(`alarm${min}min`);
-    if (!alarm) return;
-    try {
-      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      alarm.currentTime = 0;
-      alarm.play();
-    } catch (e) { console.warn('알람 실패:', e); }
-  }
-
-  function toggleAll(min) {
-    const newState = !alarmData.some(boss => alarmStates[boss.name + '_' + min]);
-    alarmData.forEach(boss => {
-      const key = boss.name + '_' + min;
-      alarmStates[key] = newState;
-    });
-    saveState();
-    document.getElementById('bossTable').innerHTML = '';
-    document.getElementById('bossTable').append(...alarmData.map(createRow));
-  }
-
-  function toggleSummary() {
-    document.getElementById('bossTableContainer').classList.toggle('summary-mode');
-  }
-
-  function toggle30MinFilter() {
-    const now = new Date();
-    filter30Active = !filter30Active;
-    const button = document.querySelector('.controls button:last-child');
-
-    alarmData.forEach(boss => {
-      const row = document.getElementById(`row-${boss.name}`);
-      const remain = boss.nextTime(now).getTime() - now.getTime();
-      if (filter30Active) {
-        row.style.display = remain <= 1800000 ? '' : 'none';
-        button.textContent = '🔎 전체 보기';
-      } else {
-        row.style.display = '';
-        button.textContent = '🕒 30분 이하 보기';
-      }
-    });
-  }
-
-  function updateTime() {
-    const now = new Date();
-    document.getElementById('currentTime').innerText = now.toLocaleTimeString('ko-KR', { hour12: false });
-    let nextBoss = null, minTime = Infinity;
-
-    alarmData.forEach(boss => {
-      const remain = boss.nextTime(now).getTime() - now.getTime();
-      if (remain < minTime) {
-        minTime = remain;
-        nextBoss = boss;
-      }
-    });
-
-    alarmData.forEach(boss => {
-      const remain = boss.nextTime(now).getTime() - now.getTime();
-      const row = document.getElementById(`row-${boss.name}`);
-      const remainCell = document.getElementById(`remain-time-${boss.name}`);
-      const h = Math.floor(remain / 3600000);
-      const m = Math.floor((remain % 3600000) / 60000);
-      const s = Math.floor((remain % 60000) / 1000);
-      const formatted = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-      remainCell.textContent = formatted;
-
-      row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min', 'highlight-next');
-      if (boss === nextBoss) row.classList.add('highlight-next');
-      if (remain <= 60000) row.classList.add('highlight-1min');
-      else if (remain <= 300000) row.classList.add('highlight-5min');
-      else if (remain <= 600000) row.classList.add('highlight-10min');
-
+    function createRow(boss) {
+      const tr = document.createElement('tr');
+      tr.id = `row-${boss.name}`;
+      tr.innerHTML = `<td>${boss.name}</td><td>${boss.location}</td><td>${boss.timeText}</td>`;
       [10, 5, 1].forEach(min => {
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = alarmStates[boss.name + '_' + min] || false;
+        input.addEventListener('change', () => {
+          alarmStates[boss.name + '_' + min] = input.checked;
+          saveState();
+        });
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      const tdRemain = document.createElement('td');
+      tdRemain.id = `remain-time-${boss.name}`;
+      tr.appendChild(tdRemain);
+      return tr;
+    }
+
+    function playTestSound() {
+      const alarm = document.getElementById('testSound');
+      try {
+        alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+        alarm.currentTime = 0;
+        alarm.play();
+      } catch (e) { console.warn('음성 재생 실패:', e); }
+    }
+
+    function triggerAlarm(name, min) {
+      const alarm = document.getElementById(`alarm${min}min`);
+      if (!alarm) return;
+      try {
+        alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+        alarm.currentTime = 0;
+        alarm.play();
+      } catch (e) { console.warn('알람 실패:', e); }
+    }
+
+    function toggleAll(min) {
+      const newState = !alarmData.some(boss => alarmStates[boss.name + '_' + min]);
+      alarmData.forEach(boss => {
         const key = boss.name + '_' + min;
-        const triggerKey = key + '_triggered';
-        const delta = min * 60000;
-        if (alarmStates[key] && remain <= delta && remain > delta - 1000 && remain > 0 && !triggered[triggerKey]) {
-          triggerAlarm(boss.name, min);
-          triggered[triggerKey] = true;
-          setTimeout(() => { triggered[triggerKey] = false; }, 60000);
+        alarmStates[key] = newState;
+      });
+      saveState();
+      document.getElementById('bossTable').innerHTML = '';
+      document.getElementById('bossTable').append(...alarmData.map(createRow));
+      updateBossVisibility();
+    }
+
+    function toggleSummary() {
+      document.getElementById('bossTableContainer').classList.toggle('summary-mode');
+    }
+
+    function toggle30MinFilter(button) {
+      const now = new Date();
+      filter30Active = !filter30Active;
+      button.textContent = filter30Active ? '🔎 전체 보기' : '🕒 30분 이하 보기';
+      updateBossVisibility();
+    }
+
+    function renderBossFilter() {
+      const container = document.getElementById('bossFilter');
+      container.innerHTML = '<strong>보스 필터: </strong>';
+      alarmData.forEach(boss => {
+        const label = document.createElement('label');
+        label.style.marginRight = '10px';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = bossFilterState[boss.name] ?? true;
+        input.addEventListener('change', () => {
+          bossFilterState[boss.name] = input.checked;
+          localStorage.setItem('bossFilterState', JSON.stringify(bossFilterState));
+          updateBossVisibility();
+        });
+        label.appendChild(input);
+        label.append(` ${boss.name}`);
+        container.appendChild(label);
+      });
+    }
+
+    function updateBossVisibility() {
+      const now = new Date();
+      alarmData.forEach(boss => {
+        const row = document.getElementById(`row-${boss.name}`);
+        const remain = boss.nextTime(now).getTime() - now.getTime();
+        const isVisible = bossFilterState[boss.name] !== false;
+        row.style.display = isVisible && (!filter30Active || remain <= 1800000) ? '' : 'none';
+      });
+    }
+
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('currentTime').innerText = now.toLocaleTimeString('ko-KR', { hour12: false });
+
+      let nextBoss = null;
+      let minTime = Infinity;
+
+      alarmData.forEach(boss => {
+        const remain = boss.nextTime(now).getTime() - now.getTime();
+        if (remain < minTime) {
+          minTime = remain;
+          nextBoss = boss;
         }
       });
+
+      alarmData.forEach(boss => {
+        const remain = boss.nextTime(now).getTime() - now.getTime();
+        const row = document.getElementById(`row-${boss.name}`);
+        const remainCell = document.getElementById(`remain-time-${boss.name}`);
+        const h = Math.floor(remain / 3600000);
+        const m = Math.floor((remain % 3600000) / 60000);
+        const s = Math.floor((remain % 60000) / 1000);
+        remainCell.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+        row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min', 'highlight-next');
+        if (boss === nextBoss) row.classList.add('highlight-next');
+        if (remain <= 60000) row.classList.add('highlight-1min');
+        else if (remain <= 300000) row.classList.add('highlight-5min');
+        else if (remain <= 600000) row.classList.add('highlight-10min');
+
+        [10, 5, 1].forEach(min => {
+          const key = boss.name + '_' + min;
+          const triggerKey = key + '_triggered';
+          const delta = min * 60000;
+          if (alarmStates[key] && remain <= delta && remain > delta - 1000 && remain > 0 && !triggered[triggerKey]) {
+            triggerAlarm(boss.name, min);
+            triggered[triggerKey] = true;
+            setTimeout(() => { triggered[triggerKey] = false; }, 60000);
+          }
+        });
+      });
+    }
+
+    // 초기 실행
+    document.getElementById('volumeSlider').value = localStorage.getItem('alarmVolume') || 0.5;
+    document.getElementById('volumeSlider').addEventListener('input', e => {
+      localStorage.setItem('alarmVolume', e.target.value);
     });
-  }
 
-  // 초기화
-  document.getElementById('volumeSlider').value = localStorage.getItem('alarmVolume') || 0.5;
-  document.getElementById('volumeSlider').addEventListener('input', e => {
-    localStorage.setItem('alarmVolume', e.target.value);
-  });
-
-  document.getElementById('bossTable').append(...alarmData.map(createRow));
-  setInterval(updateTime, 1000);
-</script>
-
+    document.getElementById('bossTable').append(...alarmData.map(createRow));
+    renderBossFilter();
+    updateBossVisibility();
+    setInterval(updateTime, 1000);
+  </script>
 </body>
 </html>
