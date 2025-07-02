@@ -48,6 +48,7 @@
       border: 1px solid #444;
       padding: 6px 10px;
       white-space: nowrap;
+      text-align: center;
     }
     th {
       background-color: #222;
@@ -56,8 +57,8 @@
     tr:nth-child(even) {
       background-color: #1a1a1a;
     }
-    td:not(:nth-child(3)), th:not(:nth-child(3)) {
-      text-align: center;
+    td:nth-child(3), th:nth-child(3) {
+      text-align: left;
     }
     .highlight-warning {
       background-color: #333333 !important;
@@ -116,7 +117,6 @@
       { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1) h++; if (t.getHours() === h && t.getMinutes() >= 40) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
       { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 50) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 50, 0, 0); }}
     ];
-
     const alarmStates = JSON.parse(localStorage.getItem('alarmStates') || '{}');
 
     function saveState() {
@@ -161,12 +161,8 @@
       else return;
 
       alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      let count = 0;
-      const interval = setInterval(() => {
-        alarm.currentTime = 0;
-        alarm.play();
-        if (++count >= 9) clearInterval(interval);
-      }, 500);
+      alarm.currentTime = 0;
+      alarm.play();
     }
 
     function toggleAll(min) {
@@ -205,14 +201,14 @@
         const s = Math.floor((remain % 60000) / 1000);
         remainEl.textContent = `(${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')})`;
 
-        if (remain <= 600000) row.classList.add('highlight-soon');
+        if (remain <= 600000 && remain > 0) row.classList.add('highlight-soon');
         else row.classList.remove('highlight-soon');
 
         [10, 5, 1].forEach(min => {
           const key = boss.name + '_' + min;
           const triggerKey = key + '_triggered';
           const delta = min * 60000;
-          if (alarmStates[key] && remain <= delta && !triggered[triggerKey]) {
+          if (alarmStates[key] && remain <= delta && remain > 0 && !triggered[triggerKey]) {
             triggerAlarm(boss.name, min);
             triggered[triggerKey] = true;
             setTimeout(() => { triggered[triggerKey] = false; }, 60000);
