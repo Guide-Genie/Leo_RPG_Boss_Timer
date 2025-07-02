@@ -106,7 +106,7 @@
   <audio id="testSound"><source src="audio/Test.mp3" type="audio/mpeg"></audio>
 
   <script>
-    const alarmData = [
+        const alarmData = [
       { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", nextTime: t => new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getMinutes() < 60 ? t.getHours() + 1 : t.getHours(), 0) },
       { name: "해적 선장", location: "2-5", timeText: "매 시 30분", nextTime: t => { const base = new Date(t); base.setMinutes(30, 0, 0); if (t.getMinutes() >= 30) base.setHours(base.getHours() + 1); return base; }},
       { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 10) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
@@ -161,10 +161,10 @@
     }
 
     function toggleAll(min) {
+      const newState = !alarmData.some(boss => alarmStates[boss.name + '_' + min]);
       alarmData.forEach(boss => {
         const key = boss.name + '_' + min;
-        const newVal = !(alarmStates[key] || false);
-        alarmStates[key] = newVal;
+        alarmStates[key] = newState;
       });
       saveState();
       document.getElementById('bossTable').innerHTML = '';
@@ -186,10 +186,11 @@
         const s = Math.floor((remain % 60000) / 1000);
         remainEl.textContent = `(${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')})`;
 
+        // 하이라이트 조건: 남은 시간이 해당 구간보다 작으면 유지됨
         row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min');
-        if (remain <= 60000 && remain > 0) row.classList.add('highlight-1min');
-        else if (remain <= 5 * 60000 && remain > 4 * 60000) row.classList.add('highlight-5min');
-        else if (remain <= 10 * 60000 && remain > 9 * 60000) row.classList.add('highlight-10min');
+        if (remain <= 10 * 60000) row.classList.add('highlight-10min');
+        if (remain <= 5 * 60000) row.classList.remove('highlight-10min'), row.classList.add('highlight-5min');
+        if (remain <= 60000) row.classList.remove('highlight-5min'), row.classList.add('highlight-1min');
 
         [10, 5, 1].forEach(min => {
           const key = boss.name + '_' + min;
