@@ -71,6 +71,10 @@
       background-color: #442a1a !important;
       color: #ffae42 !important;
     }
+    .highlight-next {
+      background-color: #294c29 !important;
+      color: #b5ffb5 !important;
+    }
   </style>
 </head>
 <body>
@@ -175,6 +179,17 @@
     function updateTime() {
       const now = new Date();
       document.getElementById('currentTime').innerText = now.toLocaleTimeString();
+      let nextBoss = null;
+      let minTime = Infinity;
+
+      alarmData.forEach(boss => {
+        const remain = boss.nextTime(now).getTime() - now.getTime();
+        if (remain < minTime) {
+          minTime = remain;
+          nextBoss = boss;
+        }
+      });
+
       alarmData.forEach(boss => {
         const remain = boss.nextTime(now).getTime() - now.getTime();
         const row = document.getElementById(`row-${boss.name}`);
@@ -186,10 +201,11 @@
         const s = Math.floor((remain % 60000) / 1000);
         remainEl.textContent = `(${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')})`;
 
-        row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min');
-        if (remain <= 10 * 60000 && remain > 5 * 60000) row.classList.add('highlight-10min');
-        else if (remain <= 5 * 60000 && remain > 60000) row.classList.add('highlight-5min');
-        else if (remain <= 60000 && remain > 0) row.classList.add('highlight-1min');
+        row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min', 'highlight-next');
+        if (boss === nextBoss) row.classList.add('highlight-next');
+        if (remain <= 60000) row.classList.add('highlight-1min');
+        else if (remain <= 5 * 60000) row.classList.add('highlight-5min');
+        else if (remain <= 10 * 60000) row.classList.add('highlight-10min');
 
         [10, 5, 1].forEach(min => {
           const key = boss.name + '_' + min;
