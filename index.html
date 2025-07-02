@@ -5,30 +5,28 @@
   <title>레오서버 보스 타이머</title>
   <style>
     body {
-      background: linear-gradient(to right bottom, #1e1e1e, #2c2c2c);
+      background-color: #121212;
       color: #e0e0e0;
       font-family: 'Noto Sans KR', sans-serif;
       margin: 0;
       padding: 20px;
     }
     h1 {
-      font-size: 2.2rem;
+      color: #ffffff;
+      font-size: 2rem;
       text-align: center;
       margin-bottom: 5px;
-      color: #ffffffdd;
-      backdrop-filter: blur(4px);
     }
     .subtitle {
-      text-align: center;
+      color: #888;
       font-size: 0.9rem;
-      color: #999;
-      margin-bottom: 30px;
+      text-align: center;
+      margin-bottom: 20px;
     }
     .current-time {
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       text-align: center;
       margin-bottom: 30px;
-      color: #ffcc00;
     }
     .controls {
       display: flex;
@@ -41,23 +39,21 @@
       width: 150px;
     }
     table {
-      width: 100%;
+      width: 90%;
+      margin: auto;
       border-collapse: collapse;
-      background-color: rgba(255, 255, 255, 0.03);
-      border-radius: 10px;
-      overflow: hidden;
-      backdrop-filter: blur(3px);
     }
     th, td {
-      border: 1px solid rgba(255,255,255,0.1);
-      padding: 12px;
+      border: 1px solid #444;
+      padding: 10px;
       text-align: center;
     }
     th {
-      background-color: rgba(255,255,255,0.05);
+      background-color: #222;
+      color: #ffcc00;
     }
     tr:nth-child(even) {
-      background-color: rgba(255,255,255,0.025);
+      background-color: #1a1a1a;
     }
     .highlight-warning {
       background-color: #333333 !important;
@@ -77,7 +73,11 @@
   <div class="controls">
     <label>🔊 알람 볼륨</label>
     <input type="range" min="0" max="1" step="0.01" id="volumeSlider">
-    <button onclick="playTestSound()">테스트 재생</button>
+    <button onclick="playTestSound()">볼륨 테스트</button>
+    <span>일괄 적용/해제:</span>
+    <button onclick="toggleAll(10)">10분 전</button>
+    <button onclick="toggleAll(5)">5분 전</button>
+    <button onclick="toggleAll(1)">1분 전</button>
   </div>
   <table>
     <thead>
@@ -93,20 +93,19 @@
     <tbody id="bossTable"></tbody>
   </table>
 
-  <audio id="alarmSound" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-    브라우저가 오디오를 지원하지 않습니다.
+  <audio id="alarmSound">
+    <source src="https://www.soundjay.com/button/beep-07.wav" type="audio/wav">
   </audio>
 
   <script>
     const alarmData = [
-      { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", pattern: t => t.getMinutes() === 0 },
-      { name: "해적 선장", location: "2-5", timeText: "매 시 30분", pattern: t => t.getMinutes() === 30 },
-      { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", pattern: t => t.getHours()%2 === 1 && t.getMinutes() === 10 },
-      { name: "위더", location: "4-5", timeText: "짝수 시 10분", pattern: t => t.getHours()%2 === 0 && t.getMinutes() === 10 },
-      { name: "쿵푸", location: "5-1", timeText: "홀수 시 40분", pattern: t => t.getHours()%2 === 1 && t.getMinutes() === 40 },
-      { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", pattern: t => t.getHours()%2 === 0 && t.getMinutes() === 40 },
-      { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", pattern: t => t.getHours()%2 === 1 && t.getMinutes() === 50 }
+      { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", nextTime: t => new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getMinutes() < 60 ? t.getHours() + 1 : t.getHours(), 0) },
+      { name: "해적 선장", location: "2-5", timeText: "매 시 30분", nextTime: t => { const base = new Date(t); base.setMinutes(30, 0, 0); if (t.getMinutes() >= 30) base.setHours(base.getHours() + 1); return base; }},
+      { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 10) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
+      { name: "위더", location: "4-5", timeText: "짝수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1) h++; if (t.getHours() === h && t.getMinutes() >= 10) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
+      { name: "쿵푸", location: "5-1", timeText: "홀수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 40) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
+      { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1) h++; if (t.getHours() === h && t.getMinutes() >= 40) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
+      { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 50) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 50, 0, 0); }}
     ];
 
     const alarmStates = JSON.parse(localStorage.getItem('alarmStates') || '{}');
@@ -115,6 +114,7 @@
 
     function saveState() {
       localStorage.setItem('alarmStates', JSON.stringify(alarmStates));
+      localStorage.setItem('volume', document.getElementById('volumeSlider').value);
     }
 
     function createRow(boss) {
@@ -123,7 +123,7 @@
       tr.innerHTML = `
         <td>${boss.name}</td>
         <td>${boss.location}</td>
-        <td>${boss.timeText}</td>
+        <td><div>${boss.timeText}</div><div id="remain-${boss.name}" style="font-size:0.85em;color:#aaa;"></div></td>
       `;
       [10, 5, 1].forEach(min => {
         const td = document.createElement('td');
@@ -140,6 +140,25 @@
       return tr;
     }
 
+    function toggleAll(min) {
+      alarmData.forEach(boss => {
+        const key = boss.name + '_' + min;
+        const newVal = !(alarmStates[key] || false);
+        alarmStates[key] = newVal;
+      });
+      saveState();
+      refreshTable();
+    }
+
+    function refreshTable() {
+      const tableBody = document.getElementById('bossTable');
+      tableBody.innerHTML = '';
+      alarmData.forEach(boss => {
+        const row = createRow(boss);
+        tableBody.appendChild(row);
+      });
+    }
+
     function updateTime() {
       const now = new Date();
       document.getElementById('currentTime').innerText = now.toLocaleTimeString();
@@ -148,8 +167,10 @@
         const row = document.getElementById(`row-${boss.name}`);
         [10, 5, 1].forEach(min => {
           if (!alarmStates[boss.name + '_' + min]) return;
-          const alertTime = new Date(now.getTime() + min * 60000);
-          if (boss.pattern(alertTime)) {
+          const nowTime = now.getTime();
+          const targetTime = boss.nextTime(now).getTime();
+          const alertTime = nowTime + min * 60000;
+          if (Math.abs(targetTime - alertTime) < 1000) {
             triggerAlarm(boss.name, min);
             if (min === 1) {
               row.classList.add('highlight-warning');
@@ -171,6 +192,16 @@
             delete highlightState[boss.name];
           }
         }
+
+        const remain = boss.nextTime(now).getTime() - now.getTime();
+        if (remain >= 0) {
+          const h = Math.floor(remain / 3600000);
+          const m = Math.floor((remain % 3600000) / 60000);
+          const s = Math.floor((remain % 60000) / 1000);
+          const remainText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+          const remainEl = document.getElementById(`remain-${boss.name}`);
+          if (remainEl) remainEl.textContent = `(남은 시간: ${remainText})`;
+        }
       });
     }
 
@@ -183,7 +214,6 @@
       const alarm = document.getElementById('alarmSound');
       alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
       const interval = setInterval(() => {
-        alarm.pause();
         alarm.currentTime = 0;
         alarm.play();
         if (++count >= 9) clearInterval(interval);
@@ -193,15 +223,14 @@
     function playTestSound() {
       const alarm = document.getElementById('alarmSound');
       alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      alarm.pause();
       alarm.currentTime = 0;
       alarm.play();
     }
 
-    document.getElementById('bossTable').append(
-      ...alarmData.map(createRow)
-    );
+    document.getElementById('volumeSlider').value = localStorage.getItem('volume') || 0.5;
+    document.getElementById('volumeSlider').addEventListener('input', saveState);
 
+    refreshTable();
     setInterval(updateTime, 1000);
   </script>
 </body>
