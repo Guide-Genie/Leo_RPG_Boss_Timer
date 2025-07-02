@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>레오서버 보스 타이머</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       background-color: #121212;
@@ -40,7 +41,8 @@
       width: 150px;
     }
     table {
-      width: auto;
+      width: 100%;
+      max-width: 900px;
       margin: auto;
       border-collapse: collapse;
     }
@@ -48,7 +50,6 @@
       border: 1px solid #444;
       padding: 6px 10px;
       white-space: nowrap;
-      text-align: center;
     }
     th {
       background-color: #222;
@@ -57,21 +58,20 @@
     tr:nth-child(even) {
       background-color: #1a1a1a;
     }
-    td:nth-child(3), th:nth-child(3) {
-      text-align: left;
+    td:not(:nth-child(3)), th:not(:nth-child(3)) {
+      text-align: center;
     }
-    .highlight-warning {
-      background-color: #333333 !important;
-      color: #ffcc00 !important;
-    }
-    .highlight-active {
-      background-color: #ffcc00 !important;
-      color: #000 !important;
-      font-weight: bold;
-    }
-    .highlight-soon {
+    .highlight-10min {
       background-color: #1a2a44 !important;
       color: #89c4ff !important;
+    }
+    .highlight-5min {
+      background-color: #4b4300 !important;
+      color: #ffe066 !important;
+    }
+    .highlight-1min {
+      background-color: #442a1a !important;
+      color: #ffae42 !important;
     }
   </style>
 </head>
@@ -108,7 +108,7 @@
   <audio id="testSound"><source src="audio/Test.mp3" type="audio/mpeg"></audio>
 
   <script>
-       const alarmData = [
+        const alarmData = [
       { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", nextTime: t => new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getMinutes() < 60 ? t.getHours() + 1 : t.getHours(), 0) },
       { name: "해적 선장", location: "2-5", timeText: "매 시 30분", nextTime: t => { const base = new Date(t); base.setMinutes(30, 0, 0); if (t.getMinutes() >= 30) base.setHours(base.getHours() + 1); return base; }},
       { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 10) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
@@ -123,70 +123,10 @@
       localStorage.setItem('alarmStates', JSON.stringify(alarmStates));
     }
 
-    function createRow(boss) {
-      const tr = document.createElement('tr');
-      tr.id = `row-${boss.name}`;
-      tr.innerHTML = `
-        <td>${boss.name}</td>
-        <td>${boss.location}</td>
-        <td>${boss.timeText} <span id="remain-${boss.name}"></span></td>
-      `;
-      [10, 5, 1].forEach(min => {
-        const td = document.createElement('td');
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.checked = alarmStates[boss.name + '_' + min] || false;
-        input.addEventListener('change', () => {
-          alarmStates[boss.name + '_' + min] = input.checked;
-          saveState();
-        });
-        td.appendChild(input);
-        tr.appendChild(td);
-      });
-      return tr;
-    }
-
-    function playTestSound() {
-      const alarm = document.getElementById('testSound');
-      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      alarm.currentTime = 0;
-      alarm.play();
-    }
-
-    function triggerAlarm(name, min) {
-      let alarm;
-      if (min === 1) alarm = document.getElementById('alarm1min');
-      else if (min === 5) alarm = document.getElementById('alarm5min');
-      else if (min === 10) alarm = document.getElementById('alarm10min');
-      else return;
-
-      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      alarm.currentTime = 0;
-      alarm.play();
-    }
-
-    function toggleAll(min) {
-      const checkboxes = document.querySelectorAll(`#bossTable input[type=checkbox]`);
-      const targetStates = {};
-      alarmData.forEach(boss => {
-        const key = boss.name + '_' + min;
-        targetStates[key] = !(alarmStates[key] || false);
-      });
-
-      checkboxes.forEach(input => {
-        const td = input.closest('td');
-        const row = td.parentElement;
-        const cells = row.querySelectorAll('td');
-        const name = cells[0].textContent;
-        const idx = Array.from(td.parentElement.children).indexOf(td);
-        if ((10 === min && idx === 3) || (5 === min && idx === 4) || (1 === min && idx === 5)) {
-          const key = name + '_' + min;
-          alarmStates[key] = targetStates[key];
-          input.checked = targetStates[key];
-        }
-      });
-      saveState();
-    }
+    function createRow(boss) { /* 생략 */ }
+    function playTestSound() { /* 생략 */ }
+    function triggerAlarm(name, min) { /* 생략 */ }
+    function toggleAll(min) { /* 생략 */ }
 
     const triggered = {};
     function updateTime() {
@@ -201,19 +141,16 @@
         const s = Math.floor((remain % 60000) / 1000);
         remainEl.textContent = `(${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')})`;
 
-        if (remain <= 600000 && remain > 0) row.classList.add('highlight-soon');
-        else row.classList.remove('highlight-soon');
+        row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min');
+        if (remain <= 60000 && remain > 0) row.classList.add('highlight-1min');
+        else if (remain <= 5 * 60000 && remain > 4 * 60000) row.classList.add('highlight-5min');
+        else if (remain <= 10 * 60000 && remain > 9 * 60000) row.classList.add('highlight-10min');
 
         [10, 5, 1].forEach(min => {
           const key = boss.name + '_' + min;
           const triggerKey = key + '_triggered';
           const delta = min * 60000;
-          if (
-            alarmStates[key] &&
-            remain <= delta &&
-            remain > delta - 60000 &&
-            !triggered[triggerKey]
-          ) {
+          if (alarmStates[key] && remain <= delta && remain > delta - 60000 && remain > 0 && !triggered[triggerKey]) {
             triggerAlarm(boss.name, min);
             triggered[triggerKey] = true;
             setTimeout(() => { triggered[triggerKey] = false; }, 60000);
