@@ -34,19 +34,20 @@
       justify-content: center;
       margin-bottom: 20px;
       gap: 10px;
+      flex-wrap: wrap;
     }
     .controls input[type="range"] {
       width: 150px;
     }
     table {
-      width: 90%;
+      width: auto;
       margin: auto;
       border-collapse: collapse;
     }
     th, td {
       border: 1px solid #444;
-      padding: 10px;
-      text-align: center;
+      padding: 8px 12px;
+      white-space: nowrap;
     }
     th {
       background-color: #222;
@@ -54,6 +55,9 @@
     }
     tr:nth-child(even) {
       background-color: #1a1a1a;
+    }
+    td:not(:nth-child(3)), th:not(:nth-child(3)) {
+      text-align: center;
     }
     .highlight-warning {
       background-color: #333333 !important;
@@ -63,6 +67,10 @@
       background-color: #ffcc00 !important;
       color: #000 !important;
       font-weight: bold;
+    }
+    .highlight-soon {
+      background-color: #1a2a44 !important;
+      color: #89c4ff !important;
     }
   </style>
 </head>
@@ -93,9 +101,10 @@
     <tbody id="bossTable"></tbody>
   </table>
 
-  <audio id="alarmSound">
-    <source src="https://www.soundjay.com/button/beep-07.wav" type="audio/wav">
-  </audio>
+  <audio id="alarm1min"><source src="audio/boss_1min.mp3" type="audio/mpeg"></audio>
+  <audio id="alarm5min"><source src="audio/boss_5min.mp3" type="audio/mpeg"></audio>
+  <audio id="alarm10min"><source src="audio/boss_10min.mp3" type="audio/mpeg"></audio>
+  <audio id="testSound"><source src="audio/Test.mp3" type="audio/mpeg"></audio>
 
   <script>
     const alarmData = [
@@ -109,12 +118,9 @@
     ];
 
     const alarmStates = JSON.parse(localStorage.getItem('alarmStates') || '{}');
-    const lastTriggered = {};
-    const highlightState = {};
 
     function saveState() {
       localStorage.setItem('alarmStates', JSON.stringify(alarmStates));
-      localStorage.setItem('volume', document.getElementById('volumeSlider').value);
     }
 
     function createRow(boss) {
@@ -123,7 +129,7 @@
       tr.innerHTML = `
         <td>${boss.name}</td>
         <td>${boss.location}</td>
-        <td><div>${boss.timeText}</div><div id="remain-${boss.name}" style="font-size:0.85em;color:#aaa;"></div></td>
+        <td>${boss.timeText} <span id="remain-${boss.name}"></span></td>
       `;
       [10, 5, 1].forEach(min => {
         const td = document.createElement('td');
@@ -140,97 +146,62 @@
       return tr;
     }
 
-    function toggleAll(min) {
-      alarmData.forEach(boss => {
-        const key = boss.name + '_' + min;
-        const newVal = !(alarmStates[key] || false);
-        alarmStates[key] = newVal;
-      });
-      saveState();
-      refreshTable();
-    }
-
-    function refreshTable() {
-      const tableBody = document.getElementById('bossTable');
-      tableBody.innerHTML = '';
-      alarmData.forEach(boss => {
-        const row = createRow(boss);
-        tableBody.appendChild(row);
-      });
-    }
-
-    function updateTime() {
-      const now = new Date();
-      document.getElementById('currentTime').innerText = now.toLocaleTimeString();
-
-      alarmData.forEach(boss => {
-        const row = document.getElementById(`row-${boss.name}`);
-        [10, 5, 1].forEach(min => {
-          if (!alarmStates[boss.name + '_' + min]) return;
-          const nowTime = now.getTime();
-          const targetTime = boss.nextTime(now).getTime();
-          const alertTime = nowTime + min * 60000;
-          if (Math.abs(targetTime - alertTime) < 1000) {
-            triggerAlarm(boss.name, min);
-            if (min === 1) {
-              row.classList.add('highlight-warning');
-              highlightState[boss.name] = { start: Date.now(), stage: 'warning' };
-            }
-          }
-        });
-
-        if (highlightState[boss.name]) {
-          const state = highlightState[boss.name];
-          const elapsed = (Date.now() - state.start) / 1000;
-
-          if (state.stage === 'warning' && elapsed >= 60) {
-            row.classList.remove('highlight-warning');
-            row.classList.add('highlight-active');
-            highlightState[boss.name] = { start: Date.now(), stage: 'active' };
-          } else if (state.stage === 'active' && elapsed >= 30) {
-            row.classList.remove('highlight-active');
-            delete highlightState[boss.name];
-          }
-        }
-
-        const remain = boss.nextTime(now).getTime() - now.getTime();
-        if (remain >= 0) {
-          const h = Math.floor(remain / 3600000);
-          const m = Math.floor((remain % 3600000) / 60000);
-          const s = Math.floor((remain % 60000) / 1000);
-          const remainText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-          const remainEl = document.getElementById(`remain-${boss.name}`);
-          if (remainEl) remainEl.textContent = `(남은 시간: ${remainText})`;
-        }
-      });
-    }
-
-    function triggerAlarm(name, min) {
-      const key = name + '_' + min;
-      const nowMin = new Date().getMinutes();
-      if (lastTriggered[key] === nowMin) return;
-      lastTriggered[key] = nowMin;
-      let count = 0;
-      const alarm = document.getElementById('alarmSound');
-      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      const interval = setInterval(() => {
-        alarm.currentTime = 0;
-        alarm.play();
-        if (++count >= 9) clearInterval(interval);
-      }, 500);
-    }
-
     function playTestSound() {
-      const alarm = document.getElementById('alarmSound');
+      const alarm = document.getElementById('testSound');
       alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
       alarm.currentTime = 0;
       alarm.play();
     }
 
-    document.getElementById('volumeSlider').value = localStorage.getItem('volume') || 0.5;
-    document.getElementById('volumeSlider').addEventListener('input', saveState);
+    function toggleAll(min) {
+      const checkboxes = document.querySelectorAll(`#bossTable input[type=checkbox]`);
+      const targetStates = {};
+      alarmData.forEach(boss => {
+        const key = boss.name + '_' + min;
+        targetStates[key] = !(alarmStates[key] || false);
+      });
 
-    refreshTable();
+      checkboxes.forEach(input => {
+        const td = input.closest('td');
+        const row = td.parentElement;
+        const cells = row.querySelectorAll('td');
+        const name = cells[0].textContent;
+        const idx = Array.from(td.parentElement.children).indexOf(td);
+        if ((10 === min && idx === 3) || (5 === min && idx === 4) || (1 === min && idx === 5)) {
+          const key = name + '_' + min;
+          alarmStates[key] = targetStates[key];
+          input.checked = targetStates[key];
+        }
+      });
+      saveState();
+    }
+
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('currentTime').innerText = now.toLocaleTimeString();
+      alarmData.forEach(boss => {
+        const remain = boss.nextTime(now).getTime() - now.getTime();
+        const row = document.getElementById(`row-${boss.name}`);
+        const remainEl = document.getElementById(`remain-${boss.name}`);
+        const h = Math.floor(remain / 3600000);
+        const m = Math.floor((remain % 3600000) / 60000);
+        const s = Math.floor((remain % 60000) / 1000);
+        remainEl.textContent = `(${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')})`;
+
+        if (remain <= 600000) {
+          row.classList.add('highlight-soon');
+        } else {
+          row.classList.remove('highlight-soon');
+        }
+      });
+    }
+
+    document.getElementById("volumeSlider").addEventListener("input", e => {
+      localStorage.setItem("alarmVolume", e.target.value);
+    });
+    document.getElementById("volumeSlider").value = localStorage.getItem("alarmVolume") || 0.5;
+
+    document.getElementById('bossTable').append(...alarmData.map(createRow));
     setInterval(updateTime, 1000);
   </script>
 </body>
