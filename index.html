@@ -186,11 +186,10 @@
         const s = Math.floor((remain % 60000) / 1000);
         remainEl.textContent = `(${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')})`;
 
-        // 하이라이트 조건: 남은 시간이 해당 구간보다 작으면 유지됨
         row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min');
-        if (remain <= 10 * 60000) row.classList.add('highlight-10min');
-        if (remain <= 5 * 60000) row.classList.remove('highlight-10min'), row.classList.add('highlight-5min');
-        if (remain <= 60000) row.classList.remove('highlight-5min'), row.classList.add('highlight-1min');
+        if (remain <= 10 * 60000 && remain > 5 * 60000) row.classList.add('highlight-10min');
+        else if (remain <= 5 * 60000 && remain > 60000) row.classList.add('highlight-5min');
+        else if (remain <= 60000 && remain > 0) row.classList.add('highlight-1min');
 
         [10, 5, 1].forEach(min => {
           const key = boss.name + '_' + min;
