@@ -50,6 +50,7 @@
       border: 1px solid #444;
       padding: 6px 10px;
       white-space: nowrap;
+      text-align: center;
     }
     th {
       background-color: #222;
@@ -57,9 +58,6 @@
     }
     tr:nth-child(even) {
       background-color: #1a1a1a;
-    }
-    td:not(:nth-child(3)), th:not(:nth-child(3)) {
-      text-align: center;
     }
     .highlight-10min {
       background-color: #1a2a44 !important;
@@ -108,7 +106,7 @@
   <audio id="testSound"><source src="audio/Test.mp3" type="audio/mpeg"></audio>
 
   <script>
-        const alarmData = [
+    const alarmData = [
       { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", nextTime: t => new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getMinutes() < 60 ? t.getHours() + 1 : t.getHours(), 0) },
       { name: "해적 선장", location: "2-5", timeText: "매 시 30분", nextTime: t => { const base = new Date(t); base.setMinutes(30, 0, 0); if (t.getMinutes() >= 30) base.setHours(base.getHours() + 1); return base; }},
       { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 10) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
@@ -117,16 +115,61 @@
       { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1) h++; if (t.getHours() === h && t.getMinutes() >= 40) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
       { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 50) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 50, 0, 0); }}
     ];
+
     const alarmStates = JSON.parse(localStorage.getItem('alarmStates') || '{}');
 
     function saveState() {
       localStorage.setItem('alarmStates', JSON.stringify(alarmStates));
     }
 
-    function createRow(boss) { /* 생략 */ }
-    function playTestSound() { /* 생략 */ }
-    function triggerAlarm(name, min) { /* 생략 */ }
-    function toggleAll(min) { /* 생략 */ }
+    function createRow(boss) {
+      const tr = document.createElement('tr');
+      tr.id = `row-${boss.name}`;
+      tr.innerHTML = `
+        <td>${boss.name}</td>
+        <td>${boss.location}</td>
+        <td>${boss.timeText} <span id="remain-${boss.name}"></span></td>
+      `;
+      [10, 5, 1].forEach(min => {
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = alarmStates[boss.name + '_' + min] || false;
+        input.addEventListener('change', () => {
+          alarmStates[boss.name + '_' + min] = input.checked;
+          saveState();
+        });
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      return tr;
+    }
+
+    function playTestSound() {
+      const alarm = document.getElementById('testSound');
+      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+      alarm.currentTime = 0;
+      alarm.play();
+    }
+
+    function triggerAlarm(name, min) {
+      let alarm = document.getElementById(`alarm${min}min`);
+      if (!alarm) return;
+      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+      alarm.currentTime = 0;
+      alarm.play();
+    }
+
+    function toggleAll(min) {
+      alarmData.forEach(boss => {
+        const key = boss.name + '_' + min;
+        const newVal = !(alarmStates[key] || false);
+        alarmStates[key] = newVal;
+      });
+      saveState();
+      document.getElementById('bossTable').innerHTML = '';
+      document.getElementById('bossTable').append(...alarmData.map(createRow));
+    }
 
     const triggered = {};
     function updateTime() {
@@ -136,6 +179,8 @@
         const remain = boss.nextTime(now).getTime() - now.getTime();
         const row = document.getElementById(`row-${boss.name}`);
         const remainEl = document.getElementById(`remain-${boss.name}`);
+        if (!row || !remainEl) return;
+
         const h = Math.floor(remain / 3600000);
         const m = Math.floor((remain % 3600000) / 60000);
         const s = Math.floor((remain % 60000) / 1000);
