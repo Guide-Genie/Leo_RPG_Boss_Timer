@@ -24,7 +24,7 @@
       margin-bottom: 20px;
     }
     .current-time {
-      font-size: 1.8rem;
+      font-size: 2.2rem;
       text-align: center;
       margin-bottom: 30px;
     }
@@ -46,7 +46,7 @@
     }
     th, td {
       border: 1px solid #444;
-      padding: 8px 12px;
+      padding: 6px 10px;
       white-space: nowrap;
     }
     th {
@@ -153,6 +153,22 @@
       alarm.play();
     }
 
+    function triggerAlarm(name, min) {
+      let alarm;
+      if (min === 1) alarm = document.getElementById('alarm1min');
+      else if (min === 5) alarm = document.getElementById('alarm5min');
+      else if (min === 10) alarm = document.getElementById('alarm10min');
+      else return;
+
+      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+      let count = 0;
+      const interval = setInterval(() => {
+        alarm.currentTime = 0;
+        alarm.play();
+        if (++count >= 9) clearInterval(interval);
+      }, 500);
+    }
+
     function toggleAll(min) {
       const checkboxes = document.querySelectorAll(`#bossTable input[type=checkbox]`);
       const targetStates = {};
@@ -176,6 +192,7 @@
       saveState();
     }
 
+    const triggered = {};
     function updateTime() {
       const now = new Date();
       document.getElementById('currentTime').innerText = now.toLocaleTimeString();
@@ -188,11 +205,19 @@
         const s = Math.floor((remain % 60000) / 1000);
         remainEl.textContent = `(${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')})`;
 
-        if (remain <= 600000) {
-          row.classList.add('highlight-soon');
-        } else {
-          row.classList.remove('highlight-soon');
-        }
+        if (remain <= 600000) row.classList.add('highlight-soon');
+        else row.classList.remove('highlight-soon');
+
+        [10, 5, 1].forEach(min => {
+          const key = boss.name + '_' + min;
+          const triggerKey = key + '_triggered';
+          const delta = min * 60000;
+          if (alarmStates[key] && remain <= delta && !triggered[triggerKey]) {
+            triggerAlarm(boss.name, min);
+            triggered[triggerKey] = true;
+            setTimeout(() => { triggered[triggerKey] = false; }, 60000);
+          }
+        });
       });
     }
 
