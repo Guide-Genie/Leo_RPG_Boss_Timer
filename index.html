@@ -148,7 +148,7 @@
       tr.innerHTML = `
         <td>${boss.name}</td>
         <td>${boss.location}</td>
-        <td>${boss.timeText} <span id="remain-${boss.name}"></span></td>
+        <td>${boss.timeText}</td>
       `;
       [10, 5, 1].forEach(min => {
         const td = document.createElement('td');
@@ -227,14 +227,12 @@
       alarmData.forEach(boss => {
         const remain = boss.nextTime(now).getTime() - now.getTime();
         const row = document.getElementById(`row-${boss.name}`);
-        const remainText = document.getElementById(`remain-${boss.name}`);
-        const remainTimeCell = document.getElementById(`remain-time-${boss.name}`);
+        const remainCell = document.getElementById(`remain-time-${boss.name}`);
         const h = Math.floor(remain / 3600000);
         const m = Math.floor((remain % 3600000) / 60000);
         const s = Math.floor((remain % 60000) / 1000);
         const formatted = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        remainText.textContent = `(${formatted})`;
-        remainTimeCell.textContent = formatted;
+        remainCell.textContent = formatted;
 
         row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min', 'highlight-next');
         if (boss === nextBoss) row.classList.add('highlight-next');
