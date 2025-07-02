@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>레오서버 보스 타이머</title>
+  <style>
+    body {
+      background: linear-gradient(to right bottom, #1e1e1e, #2c2c2c);
+      color: #e0e0e0;
+      font-family: 'Noto Sans KR', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2.2rem;
+      text-align: center;
+      margin-bottom: 5px;
+      color: #ffffffdd;
+      backdrop-filter: blur(4px);
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #999;
+      margin-bottom: 30px;
+    }
+    .current-time {
+      font-size: 1.6rem;
+      text-align: center;
+      margin-bottom: 30px;
+      color: #ffcc00;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+    .controls input[type="range"] {
+      width: 150px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      overflow: hidden;
+      backdrop-filter: blur(3px);
+    }
+    th, td {
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 12px;
+      text-align: center;
+    }
+    th {
+      background-color: rgba(255,255,255,0.05);
+    }
+    tr:nth-child(even) {
+      background-color: rgba(255,255,255,0.025);
+    }
+    .highlight-warning {
+      background-color: #333333 !important;
+      color: #ffcc00 !important;
+    }
+    .highlight-active {
+      background-color: #ffcc00 !important;
+      color: #000 !important;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>레오서버 보스 타이머</h1>
+  <div class="subtitle">by W_Pl</div>
+  <div class="current-time" id="currentTime"></div>
+  <div class="controls">
+    <label>🔊 알람 볼륨</label>
+    <input type="range" min="0" max="1" step="0.01" id="volumeSlider">
+    <button onclick="playTestSound()">테스트 재생</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>보스명</th>
+        <th>위치</th>
+        <th>젠 시간</th>
+        <th>10분 전</th>
+        <th>5분 전</th>
+        <th>1분 전</th>
+      </tr>
+    </thead>
+    <tbody id="bossTable"></tbody>
+  </table>
+
+  <audio id="alarmSound" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+    브라우저가 오디오를 지원하지 않습니다.
+  </audio>
+
+  <script>
+    const alarmData = [
+      { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", pattern: t => t.getMinutes() === 0 },
+      { name: "해적 선장", location: "2-5", timeText: "매 시 30분", pattern: t => t.getMinutes() === 30 },
+      { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", pattern: t => t.getHours()%2 === 1 && t.getMinutes() === 10 },
+      { name: "위더", location: "4-5", timeText: "짝수 시 10분", pattern: t => t.getHours()%2 === 0 && t.getMinutes() === 10 },
+      { name: "쿵푸", location: "5-1", timeText: "홀수 시 40분", pattern: t => t.getHours()%2 === 1 && t.getMinutes() === 40 },
+      { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", pattern: t => t.getHours()%2 === 0 && t.getMinutes() === 40 },
+      { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", pattern: t => t.getHours()%2 === 1 && t.getMinutes() === 50 }
+    ];
+
+    const alarmStates = JSON.parse(localStorage.getItem('alarmStates') || '{}');
+    const lastTriggered = {};
+    const highlightState = {};
+
+    function saveState() {
+      localStorage.setItem('alarmStates', JSON.stringify(alarmStates));
+    }
+
+    function createRow(boss) {
+      const tr = document.createElement('tr');
+      tr.id = `row-${boss.name}`;
+      tr.innerHTML = `
+        <td>${boss.name}</td>
+        <td>${boss.location}</td>
+        <td>${boss.timeText}</td>
+      `;
+      [10, 5, 1].forEach(min => {
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = alarmStates[boss.name + '_' + min] || false;
+        input.addEventListener('change', () => {
+          alarmStates[boss.name + '_' + min] = input.checked;
+          saveState();
+        });
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      return tr;
+    }
+
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('currentTime').innerText = now.toLocaleTimeString();
+
+      alarmData.forEach(boss => {
+        const row = document.getElementById(`row-${boss.name}`);
+        [10, 5, 1].forEach(min => {
+          if (!alarmStates[boss.name + '_' + min]) return;
+          const alertTime = new Date(now.getTime() + min * 60000);
+          if (boss.pattern(alertTime)) {
+            triggerAlarm(boss.name, min);
+            if (min === 1) {
+              row.classList.add('highlight-warning');
+              highlightState[boss.name] = { start: Date.now(), stage: 'warning' };
+            }
+          }
+        });
+
+        if (highlightState[boss.name]) {
+          const state = highlightState[boss.name];
+          const elapsed = (Date.now() - state.start) / 1000;
+
+          if (state.stage === 'warning' && elapsed >= 60) {
+            row.classList.remove('highlight-warning');
+            row.classList.add('highlight-active');
+            highlightState[boss.name] = { start: Date.now(), stage: 'active' };
+          } else if (state.stage === 'active' && elapsed >= 30) {
+            row.classList.remove('highlight-active');
+            delete highlightState[boss.name];
+          }
+        }
+      });
+    }
+
+    function triggerAlarm(name, min) {
+      const key = name + '_' + min;
+      const nowMin = new Date().getMinutes();
+      if (lastTriggered[key] === nowMin) return;
+      lastTriggered[key] = nowMin;
+      let count = 0;
+      const alarm = document.getElementById('alarmSound');
+      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+      const interval = setInterval(() => {
+        alarm.pause();
+        alarm.currentTime = 0;
+        alarm.play();
+        if (++count >= 9) clearInterval(interval);
+      }, 500);
+    }
+
+    function playTestSound() {
+      const alarm = document.getElementById('alarmSound');
+      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+      alarm.pause();
+      alarm.currentTime = 0;
+      alarm.play();
+    }
+
+    document.getElementById('bossTable').append(
+      ...alarmData.map(createRow)
+    );
+
+    setInterval(updateTime, 1000);
+  </script>
+</body>
+</html>
