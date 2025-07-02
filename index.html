@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>레오서버 보스 타이머</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       background-color: #121212;
@@ -25,7 +25,7 @@
       margin-bottom: 20px;
     }
     .current-time {
-      font-size: 2.2rem;
+      font-size: 2.4rem;
       text-align: center;
       margin-bottom: 30px;
     }
@@ -62,18 +62,30 @@
     .highlight-10min {
       background-color: #1a2a44 !important;
       color: #89c4ff !important;
+      box-shadow: 0 0 8px #89c4ff;
     }
     .highlight-5min {
       background-color: #4b4300 !important;
       color: #ffe066 !important;
+      box-shadow: 0 0 8px #ffe066;
     }
     .highlight-1min {
       background-color: #442a1a !important;
       color: #ffae42 !important;
+      box-shadow: 0 0 8px #ffae42;
     }
     .highlight-next {
-      background-color: #294c29 !important;
-      color: #b5ffb5 !important;
+      background-color: #1e442e !important;
+      color: #b6ffb6 !important;
+      box-shadow: 0 0 8px #b6ffb6;
+    }
+    .summary-mode td:nth-child(4),
+    .summary-mode td:nth-child(5),
+    .summary-mode td:nth-child(6),
+    .summary-mode th:nth-child(4),
+    .summary-mode th:nth-child(5),
+    .summary-mode th:nth-child(6) {
+      display: none;
     }
   </style>
 </head>
@@ -83,14 +95,16 @@
   <div class="current-time" id="currentTime"></div>
   <div class="controls">
     <label>🔊 알람 볼륨</label>
-    <input type="range" min="0" max="1" step="0.01" id="volumeSlider">
+    <input type="range" min="0" max="1" step="0.01" id="volumeSlider" />
     <button onclick="playTestSound()">볼륨 테스트</button>
     <span>일괄 적용/해제:</span>
     <button onclick="toggleAll(10)">10분 전</button>
     <button onclick="toggleAll(5)">5분 전</button>
     <button onclick="toggleAll(1)">1분 전</button>
+    <button onclick="toggleSummary()">📱 요약 모드</button>
+    <button onclick="toggle30MinFilter()">🕒 30분 이하 보기</button>
   </div>
-  <table>
+  <table id="bossTableContainer">
     <thead>
       <tr>
         <th>보스명</th>
@@ -99,28 +113,30 @@
         <th>10분 전</th>
         <th>5분 전</th>
         <th>1분 전</th>
+        <th>남은 시간</th>
       </tr>
     </thead>
     <tbody id="bossTable"></tbody>
   </table>
 
-  <audio id="alarm1min"><source src="audio/boss_1min.mp3" type="audio/mpeg"></audio>
-  <audio id="alarm5min"><source src="audio/boss_5min.mp3" type="audio/mpeg"></audio>
-  <audio id="alarm10min"><source src="audio/boss_10min.mp3" type="audio/mpeg"></audio>
-  <audio id="testSound"><source src="audio/Test.mp3" type="audio/mpeg"></audio>
+  <audio id="alarm1min"><source src="audio/boss_1min.mp3" type="audio/mpeg" /></audio>
+  <audio id="alarm5min"><source src="audio/boss_5min.mp3" type="audio/mpeg" /></audio>
+  <audio id="alarm10min"><source src="audio/boss_10min.mp3" type="audio/mpeg" /></audio>
+  <audio id="testSound"><source src="audio/Test.mp3" type="audio/mpeg" /></audio>
 
   <script>
-        const alarmData = [
-      { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", nextTime: t => new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getMinutes() < 60 ? t.getHours() + 1 : t.getHours(), 0) },
+    const alarmData = [
+      { name: "그루트 킹", location: "1-5", timeText: "매 시 정각", nextTime: t => new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getMinutes() < 60 ? t.getHours() + 1 : t.getHours(), 0, 0) },
       { name: "해적 선장", location: "2-5", timeText: "매 시 30분", nextTime: t => { const base = new Date(t); base.setMinutes(30, 0, 0); if (t.getMinutes() >= 30) base.setHours(base.getHours() + 1); return base; }},
-      { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 10) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
-      { name: "위더", location: "4-5", timeText: "짝수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1) h++; if (t.getHours() === h && t.getMinutes() >= 10) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
-      { name: "쿵푸", location: "5-1", timeText: "홀수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 40) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
-      { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1) h++; if (t.getHours() === h && t.getMinutes() >= 40) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
-      { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0) h++; if (t.getHours() === h && t.getMinutes() >= 50) h += 2; return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 50, 0, 0); }}
+      { name: "아절 브루트", location: "3-5", timeText: "홀수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 10)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
+      { name: "위더", location: "4-5", timeText: "짝수 시 10분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1 || (h % 2 === 0 && t.getMinutes() >= 10)) h += 1 + (h % 2 === 1 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 10, 0, 0); }},
+      { name: "쿵푸", location: "5-1", timeText: "홀수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 40)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
+      { name: "서리군주", location: "6-4", timeText: "짝수 시 40분", nextTime: t => { let h = t.getHours(); if (h % 2 === 1 || (h % 2 === 0 && t.getMinutes() >= 40)) h += 1 + (h % 2 === 1 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 40, 0, 0); }},
+      { name: "타락한 군주 세르칸", location: "7-4", timeText: "홀수 시 50분", nextTime: t => { let h = t.getHours(); if (h % 2 === 0 || (h % 2 === 1 && t.getMinutes() >= 50)) h += 1 + (h % 2 === 0 ? 1 : 0); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), h, 50, 0, 0); }}
     ];
 
     const alarmStates = JSON.parse(localStorage.getItem('alarmStates') || '{}');
+    const triggered = {};
 
     function saveState() {
       localStorage.setItem('alarmStates', JSON.stringify(alarmStates));
@@ -146,22 +162,29 @@
         td.appendChild(input);
         tr.appendChild(td);
       });
+      const tdRemain = document.createElement('td');
+      tdRemain.id = `remain-time-${boss.name}`;
+      tr.appendChild(tdRemain);
       return tr;
     }
 
     function playTestSound() {
       const alarm = document.getElementById('testSound');
-      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      alarm.currentTime = 0;
-      alarm.play();
+      try {
+        alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+        alarm.currentTime = 0;
+        alarm.play();
+      } catch (e) { console.warn('음성 재생 실패:', e); }
     }
 
     function triggerAlarm(name, min) {
-      let alarm = document.getElementById(`alarm${min}min`);
+      const alarm = document.getElementById(`alarm${min}min`);
       if (!alarm) return;
-      alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
-      alarm.currentTime = 0;
-      alarm.play();
+      try {
+        alarm.volume = parseFloat(document.getElementById('volumeSlider').value || 0.5);
+        alarm.currentTime = 0;
+        alarm.play();
+      } catch (e) { console.warn('알람 실패:', e); }
     }
 
     function toggleAll(min) {
@@ -175,12 +198,23 @@
       document.getElementById('bossTable').append(...alarmData.map(createRow));
     }
 
-    const triggered = {};
+    function toggleSummary() {
+      document.getElementById('bossTableContainer').classList.toggle('summary-mode');
+    }
+
+    function toggle30MinFilter() {
+      const now = new Date();
+      alarmData.forEach(boss => {
+        const row = document.getElementById(`row-${boss.name}`);
+        const remain = boss.nextTime(now).getTime() - now.getTime();
+        row.style.display = remain <= 1800000 ? '' : 'none';
+      });
+    }
+
     function updateTime() {
       const now = new Date();
-      document.getElementById('currentTime').innerText = now.toLocaleTimeString();
-      let nextBoss = null;
-      let minTime = Infinity;
+      document.getElementById('currentTime').innerText = now.toLocaleTimeString('ko-KR', { hour12: false });
+      let nextBoss = null, minTime = Infinity;
 
       alarmData.forEach(boss => {
         const remain = boss.nextTime(now).getTime() - now.getTime();
@@ -193,25 +227,26 @@
       alarmData.forEach(boss => {
         const remain = boss.nextTime(now).getTime() - now.getTime();
         const row = document.getElementById(`row-${boss.name}`);
-        const remainEl = document.getElementById(`remain-${boss.name}`);
-        if (!row || !remainEl) return;
-
+        const remainText = document.getElementById(`remain-${boss.name}`);
+        const remainTimeCell = document.getElementById(`remain-time-${boss.name}`);
         const h = Math.floor(remain / 3600000);
         const m = Math.floor((remain % 3600000) / 60000);
         const s = Math.floor((remain % 60000) / 1000);
-        remainEl.textContent = `(${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')})`;
+        const formatted = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        remainText.textContent = `(${formatted})`;
+        remainTimeCell.textContent = formatted;
 
         row.classList.remove('highlight-10min', 'highlight-5min', 'highlight-1min', 'highlight-next');
         if (boss === nextBoss) row.classList.add('highlight-next');
         if (remain <= 60000) row.classList.add('highlight-1min');
-        else if (remain <= 5 * 60000) row.classList.add('highlight-5min');
-        else if (remain <= 10 * 60000) row.classList.add('highlight-10min');
+        else if (remain <= 300000) row.classList.add('highlight-5min');
+        else if (remain <= 600000) row.classList.add('highlight-10min');
 
         [10, 5, 1].forEach(min => {
           const key = boss.name + '_' + min;
           const triggerKey = key + '_triggered';
           const delta = min * 60000;
-          if (alarmStates[key] && remain <= delta && remain > delta - 60000 && remain > 0 && !triggered[triggerKey]) {
+          if (alarmStates[key] && remain <= delta && remain > delta - 1000 && remain > 0 && !triggered[triggerKey]) {
             triggerAlarm(boss.name, min);
             triggered[triggerKey] = true;
             setTimeout(() => { triggered[triggerKey] = false; }, 60000);
@@ -220,10 +255,11 @@
       });
     }
 
-    document.getElementById("volumeSlider").addEventListener("input", e => {
-      localStorage.setItem("alarmVolume", e.target.value);
+    // 초기화
+    document.getElementById('volumeSlider').value = localStorage.getItem('alarmVolume') || 0.5;
+    document.getElementById('volumeSlider').addEventListener('input', e => {
+      localStorage.setItem('alarmVolume', e.target.value);
     });
-    document.getElementById("volumeSlider").value = localStorage.getItem("alarmVolume") || 0.5;
 
     document.getElementById('bossTable').append(...alarmData.map(createRow));
     setInterval(updateTime, 1000);
